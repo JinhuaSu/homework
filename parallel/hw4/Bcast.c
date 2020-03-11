@@ -10,6 +10,7 @@ int main(int argc, char** argv){
 
         exit(1);
     }
+    MPI_
 
     int number_elements = atoi(argv[1]);
     int number_trials = atoi(argv[2]);
