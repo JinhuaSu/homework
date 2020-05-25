@@ -1,0 +1,132 @@
+---
+title: "时序第6次作业"
+output: html_notebook
+---
+苏锦华 2017201620
+
+# 4.2
+
+使用指数平滑法得到$\breve{x}_{t-1} = 5 ,\breve{x}_{t+1} = 5.26 $,其中已知$x_t=5.25,x_{t+1}=5.5$又因为简单指数平滑有性质有$\breve{x}_{t} =\alpha x_t+(1-\alpha)\breve{x}_{t-1}  $和$\breve{x}_{t+1} =\alpha x_{t+1}+(1-\alpha)\breve{x}_{t}  $,联合上述方，最后得到$\alpha=0.4(舍去2.6)$。
+
+```{r}
+
+```
+
+# 4.5
+
+
+```{r}
+table =read.table('../习题数据/习题4.5数据.txt',fill =T)
+population = c()
+for(i in 1:8){
+  for(j in 1:8){
+    if (i != 8 || j <= 4){
+      population = c(population,table[i,j])
+    }
+  }
+}
+population_ts = ts(population,start=1949)
+plot(population_ts,type="o")
+```
+
+做出图后发现，图像基本呈现线性，可以用线性模型拟合，但是结合国情可知，从2000年以来我国人口增速逐渐放缓，所以还是使用指数平滑来拟合更多的近期信息,由于曲线有明显的趋势而没有明显的季节性，选用Holt两参数指数平滑。
+
+```{r}
+library(forecast)
+Holfit <- HoltWinters(population_ts,alpha=0.3,beta=0.6,gamma=F)
+fore <- forecast(Holfit, h=5)
+plot(Holfit)
+plot(fore)
+Holfit
+```
+考虑到图形中1960年左右的三年饥荒对近期预测价值不大，所以应当将平滑因子调大，使得预测更加结合近期数据，令alpha=0.3，beta=0.6，发现拟合效果比较理想，拟合的斜率比较接近近期，最后输出其预测结果。发现预测结果最终2013年预计为13.6亿，查询实际结果为135404万人，在80%置信区间以内，预测效果非常不错。
+
+```{r}
+fore
+```
+
+# 4.7
+
+```{r}
+table2 =read.table('../习题数据/习题4.7数据.txt',fill =T)
+milk = c()
+for(i in 1:9){
+  for(j in 1:12){
+    milk = c(milk,table2[i,j])
+  }
+}
+milk_ts = ts(milk,start=c(1962,1),frequency=12)
+plot(milk_ts,type="o")
+```
+
+发现时序呈现十分明显的季节性，所以考虑因素分解方法,发现方差没有随着时间变大，所以选择加法模型。
+
+```{r}
+milk_ts.fit = decompose(milk_ts)
+plot(milk_ts.fit)
+```
+
+发现分解结果中季节因素非常明显，说明牛奶产量有非常明显的季节性,季节指数在5月份达到最高，趋势呈现非常明显的直线上升趋势，说明产能稳步提升。从随机因素看，奶牛在1964年有明显的增产，而1969年左右有减产的随机影响。
+
+```{r}
+milk_ts.fit$figure
+plot(milk_ts.fit$figure,type="o")
+```
+
+因素分解的预测主要是先消除季节因素，再拟合趋势回归，最后结合季节因素的过程，这个过程是X11过程，这里我手动实现一下。
+
+```{r}
+reg<-lm(milk_ts.fit$trend~time(milk_ts))
+summary(reg)
+par(mfrow=c(2,2))
+plot(reg,which=c(1:4))
+```
+
+```{r}
+sea<-as.vector(milk_ts.fit$seasonal)
+sea<-sea[1:12]
+par(mfrow=c(1,1))
+plot(sea,type = "l")
+pre<-1971+(0:11)/12
+pre<--42690.59+22.07*pre
+pred<-pre+sea
+```
+
+```{r}
+pred
+```
+预测结果如上。
+
+# 5.8
+
+```{r}
+table3 =read.table('../习题数据/习题4.8数据.txt',fill =T)
+pig = c()
+for(i in 1:19){
+  for(j in 1:10){
+    if (i != 19 || j <= 8){
+      pig = c(pig,table3[i,j])
+    }
+  }
+}
+pig_ts = ts(pig,start=c(1980,1),frequency=12)
+plot(pig_ts,type="o")
+```
+
+发现这个序列除了季节性外还有时间更长的大周期，可能使用因素分解无法很好的描述，先使用因素分解，如果效果不好就考虑三参数指数平滑方法。
+
+```{r}
+pig_ts.decom <- decompose(pig_ts)
+plot(pig_ts.decom)
+```
+
+发现季节性很明显，但是趋势曲线非常不明朗，说明远期信息对于预测来说质量较差，所以选择用指数平滑来更多考虑近期信息。
+
+```{r}
+pig_ts.Holfit <- HoltWinters(pig_ts,alpha=0.3,beta=0.3,gamma=0.3)
+pig_ts.fore <- forecast(pig_ts.Holfit, h=24)
+plot(pig_ts.Holfit)
+plot(pig_ts.fore)
+pig_ts.Holfit
+```
+由于需要预测24期，三个参数均设置为0.3，模型最终的预测区间也非常宽，总体上生猪还是呈现回调趋势。

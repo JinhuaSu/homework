@@ -1,0 +1,61 @@
+---
+title: "统计计算第6讲作业"
+output: html_notebook
+---
+苏锦华 2017201620
+
+# 作业要求
+
+使用数值模拟法构造下题分布的随机变量，取n=100的样本量和m=100的循环次数来估计其均值与MSE。
+
+![](/home/sujinhua/Pictures/统计计算第6讲作业.jpg)
+
+# 解答
+
+为了方便验证之后的结果，先计算出该分布的真实均值，根据上述密度函数的计算公式可推得以下密度函数：
+
+$$f(x)= \frac{\phi(x)}{\Phi(1)-\Phi(0)}=\frac{\exp(-0.5 \times x^2)}{2.506 \times 0.3413}$$
+
+$$\mu=\int_0^1xf(x)dx=-\frac{exp(-0.5x^2)}{0.8553}|_0^1 = 0.46$$
+
+## 构造随机变量的样本序列
+
+这里不使用直接变换法生成随机序列，而采用截尾的定义，生成标准正态分布，取落入【0,1】区间的数构成样本。
+
+```{r}
+get_sample = function(n){
+  sample = c()
+  while (length(sample)<n){
+    temp = rnorm(1)
+    if (temp>=0 && temp<=1){
+      sample = c(sample,temp)
+    }
+  }
+  return(sample)
+}
+get_sample(100)
+```
+
+## 估计均值
+
+通过循环得到m组样本，每组样本计算均值保存，最后求平均可到如下结果，发现误差在0.0036
+
+```{r}
+m = 100
+n=100
+mu_group = c()
+for(i in 1:m){
+  mu_ = mean(get_sample(n))
+  mu_group = c(mu_group,mu_)
+}
+mean(mu_group)
+```
+
+## 估计MSE
+
+最后用均值集合计算MSE,结果如下：
+
+```{r}
+real_mu = 0.46
+sum((mu_group - real_mu) * (mu_group - real_mu)) / m
+```

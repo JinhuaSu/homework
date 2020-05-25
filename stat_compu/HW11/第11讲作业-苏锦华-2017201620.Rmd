@@ -1,0 +1,45 @@
+---
+title: "统计计算第12讲作业"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+苏锦华 2017201620
+
+# 题目
+
+![](/home/sujinhua/Pictures/统计计算第11讲作业.jpg)
+
+# 证明
+
+![](证明.jpg)
+
+# 模拟验证
+
+如结果显示，刀切法估计偏差更大，但是刀切法估计量方差更小。
+
+```{r}
+n<-20
+N <- 1000
+jackknife_estimate<-NULL
+plug_in_estimate<-NULL
+mu <- 3
+sigma = 10
+for (i in 1:N){
+  X <- rnorm(n,mu,sigma)
+  plug_in_estimate[i] <- mean((X-mean(X))^2)
+  bias <- c()
+  for(j in 1:n){
+    tmp <- c()
+    for (k in 1:n){
+      if (k!=j){
+        tmp <- c(tmp,X[k])
+      }
+    }
+    bias <- c(bias,mean((tmp-mean(tmp))^2)-mean((X-mean(X))^2))
+  }
+  jackknife_estimate[i] <- (n-1) * mean(bias) + mean((X-mean(X))^2)
+}
+c(sigma^2, mean(jackknife_estimate), var(jackknife_estimate),mean(plug_in_estimate),var(plug_in_estimate))
+```

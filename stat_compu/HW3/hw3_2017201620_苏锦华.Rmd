@@ -1,0 +1,58 @@
+---
+title: "统计计算第三次作业"
+output: html_notebook
+---
+苏锦华 2017201620
+
+# 作业要求
+
+把三个球等可能放进三个盒子编号1/2/3，XYZ 表示放入盒中个数求（X，Y）分布随机数。
+
+# 解答
+
+利用条件分布将联合分布拆为$P(X=i,Y=j) = P(X=i)P(Y=j|X=i)$,即可以理解为先根据分布确定X值，再根据确定的X值和条件概率确定Y值。
+
+具体公式如下:
+
+$$P(X=i)=C_3^i(\frac{1}{3})^i(\frac{2}{3})^{3-i}$$
+
+$$P(Y=j|X=i)=C_{3-i}^j(\frac{1}{2})^j(\frac{1}{2})^{3-i-j}$$
+```{r}
+x = rep(0,5000)
+y = rep(0,5000)
+p1 = function(i){
+  return(choose(3,i) * (1/3)^i * (2/3)^(3-i))
+}
+p2 = function(i,j){
+  return(choose(3-i,j) * (1/2)^j * (1/2)^(3-i-j))
+}
+r1 = runif(5000)
+r2 = runif(5000)
+for (id in 1:5000){
+  tmp = 0
+  for (i in 0:3) {
+    tmp = tmp + p1(i)
+    if(r1[id] < tmp){
+      break
+    }
+  }
+  x[id] = i
+  tmp = 0
+  for(j in 0:3-i){
+    tmp = tmp + p2(i,j)
+    if(r2[id] < tmp){
+      break
+    }
+  }
+  y[id] = j
+}
+plot(x,y,type="p")
+```
+画出频率分布直方图后，发现x，y几乎完全一样，其实在概率分解时xy具有对称性，先分解y,再根据y来使用条件概率计算x也是完全可以的。
+```{r}
+hist(x)
+```
+
+```{r}
+hist(y)
+```

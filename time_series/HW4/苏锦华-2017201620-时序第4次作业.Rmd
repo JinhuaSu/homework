@@ -1,0 +1,250 @@
+---
+title: "时序第4次作业"
+output: html_notebook
+---
+
+苏锦华 2017201620
+
+# 课后练习
+
+## 证明题
+
+### 3.6
+
+![3.6](3_6.jpg)
+
+### 3.15
+
+![3.15](3_15.jpg)
+
+## 编程拟合题
+
+### 3.17
+
+**第一小问**
+
+对序列做平稳性与随机性检验。直接画出折线图发现时序均值稳定，波动性感觉非常随机。画出自相关系数图后发现1阶2阶数值非常接近，说明具有一定拖尾特性，短期相关，但长期看基本没有大于2倍标准差的数值。进一步做白噪音检验，发现阶数差为6时，拒绝白噪音原假设，但其他阶数差均不拒绝白噪音原假设。
+
+```{r}
+table =read.table('../习题数据/习题3.17数据.txt',fill =T)
+snow_fall = c()
+for(i in 1:8){
+  for(j in 1:8){
+    if (i != 8 || j != 8){
+      snow_fall = c(snow_fall,table[i,j])
+    }
+  }
+}
+snow_fall = ts(snow_fall,start=c(1957,1),frequency=1)
+plot(snow_fall,type="o")
+acf(snow_fall,lag=24)
+for(i in 1:4) print(Box.test(snow_fall,lag=6*i))
+```
+ 
+**第二小问**
+
+先画出偏自相关图发现具有明显的拖尾特性，即下降为0的速度不快，到后期甚至出现大值，也有伪周期性特征。由于自相关图拖尾性没有那么明显，所有可以认为自相关图2阶截尾或拖尾。所以初步预计是MA(2)或者ARMA(1,2)。进一步使用自动定阶包，发现输出1阶差分下为MA(1)。
+ 
+```{r}
+library(zoo)
+library(forecast)
+pacf(snow_fall)
+auto.arima(snow_fall)
+```
+ 
+对一阶差分画出自相关图和偏自相关图，发现自相关1阶截尾，偏自相关拖尾的现象很明显，差分情况下12阶数差也拒绝了白噪音的原假设。
+```{r}
+acf(diff(snow_fall))
+pacf(diff(snow_fall))
+for(i in 1:2) print(Box.test(diff(snow_fall),lag=6*i))
+```
+
+**第三小问**
+
+由于暂时没学差分，所以仍然用MA(1)模型拟合，发现系数非零显著，残差序列也为白噪音序列，所以这是一个较为精简的拟合效果好的模型。
+
+```{r}
+snow_fall.fit <- arima(snow_fall, order = c(0,0,1), method = "ML")
+snow_fall.fit
+for(i in 1:2) print(Box.test(snow_fall.fit$residual, lag= 6*i))
+```
+
+使用拟合好的MA(1)模型进行预测，得到以下结果。
+
+```{r}
+snow_fall.fore <- forecast(snow_fall.fit, h=5)
+snow_fall.fore
+```
+
+### 3.18
+
+**第一小问**
+
+对序列做平稳性与随机性检验。发现序列均值有些随时间变小的趋势，发现自相关系数有比较明显的拖尾特性，但长期来看基稳定在两倍标准差以内，所以还算平稳。进行白噪音检验发现所有阶数差情形下都拒绝白噪音的原假设。
+
+```{r}
+table2 =read.table('../习题数据/习题3.18数据.txt',fill =T)
+cereals = c()
+for(i in 1:7){
+  for(j in 1:11){
+    if (i != 7 || j <= 8 ){
+      cereals = c(cereals,table2[i,j])
+    }
+  }
+}
+cereals = ts(cereals,start=c(1946,1),frequency=1)
+plot(cereals,type="o")
+acf(cereals,lag=24)
+for(i in 1:4) print(Box.test(cereals,lag=6*i))
+```
+ 
+**第二小问**
+ 
+ 偏自相关图有明显拖尾特征，初步估计为ARMA(1,2)模型,AIC和BIC自动定阶结果均为差分条件为1阶下的MA(1)
+ 
+```{r}
+library(zoo)
+library(forecast)
+pacf(cereals)
+auto.arima(cereals)
+auto.arima(cereals,ic="bic")
+```
+ 
+ 由于自相关图应该算是2阶截尾，所以先试一下MA(2),发现ma2系数不显著。
+
+```{r}
+cereals.fit <- arima(cereals, order = c(0,0,2), method = "ML")
+cereals.fit
+for(i in 1:2) print(Box.test(cereals.fit$residual, lag= 6*i))
+```
+
+最后尝试MA（1），发现系数都显著，且残差序列为白噪音序列。
+
+```{r}
+cereals.fit <- arima(cereals, order = c(0,0,1), method = "ML")
+cereals.fit
+for(i in 1:2) print(Box.test(cereals.fit$residual, lag= 6*i))
+```
+
+**第三小问**
+
+使用拟合好的MA（1）模型做出5年预测，发现从第二年后预测数值稳定不变。
+
+```{r}
+cereals.fore <- forecast(cereals.fit, h=5)
+cereals.fore
+```
+
+
+### 3.19
+
+**第一小问**
+
+对序列做平稳性与随机性检验。发现自相关图1阶截尾，序列有很强的稳定性。白噪音检验均拒绝白噪音原假设。
+
+```{r}
+table3 =read.table('../习题数据/习题3.19数据.txt',fill =T)
+products = c()
+for(i in 1:23){
+  for(j in 1:9){
+    if (i != 23 || j <= 3){
+      products = c(products,table3[i,j])
+    }
+  }
+}
+products = ts(products)
+plot(products,type="o")
+acf(products,lag=24)
+for(i in 1:4) print(Box.test(products,lag=6*i))
+```
+ 
+**第二小问**
+
+偏自相关性明显拖尾，初步预计MA(1)。AIC最大自动定阶为MA(2),BIC最大自动定阶为MA(1)
+ 
+```{r}
+library(zoo)
+library(forecast)
+pacf(products)
+auto.arima(products)
+auto.arima(products,ic="bic")
+```
+ 
+上面结果给出了ma2与se，发现其系数小于两倍标差，所以最终采用MA(1)模型进行拟合，发现残差序列为白噪音序列。
+
+```{r}
+products.fit <- arima(products, order = c(0,0,1), method = "ML")
+products.fit
+for(i in 1:2) print(Box.test(products.fit$residual, lag= 6*i))
+```
+
+**第三小问**
+
+最终用拟合好的MA(1)模型给出95%的置信区间。
+
+```{r}
+products.fore <- forecast(products.fit, h=1)
+products.fore
+```
+
+
+### 3.20
+
+**第一小问**
+
+对序列做平稳性与随机性检验。自相关图有一定伪周期，但长期来看基本小于两倍标准差，算是平稳序列，这个奇怪的特征与序列在1992年的巨大波动有关。lag为6与12时拒白噪音假设。
+
+```{r}
+table4 =read.table('../习题数据/习题3.20数据.txt',fill =T)
+population = c()
+for(i in 1:15){
+  for(j in 1:6){
+    if (i != 15 || j <= 4 ){
+      population = c(population,table4[i,j])
+    }
+  }
+}
+population = ts(population,start=c(1971,9),frequency=4)
+plot(population,type="o")
+acf(population,lag=24)
+for(i in 1:4) print(Box.test(population,lag=6*i))
+```
+ 
+**第二小问**
+ 
+ 偏自相关图也是明显拖尾，目前只能判断为ARMA模型，采用BIC准则自动定阶发现一阶差分下ARMA(2,1)最合适。
+ 
+```{r}
+library(zoo)
+library(forecast)
+pacf(population)
+auto.arima(population,ic="bic")
+```
+ 
+
+
+
+不做差分拟合ARMA(2,1)发现系数均显著，但是残差序列在6阶的情况下拒绝白噪音原假设。
+
+```{r}
+population.fit <- arima(population, order = c(2,0,1), method = "ML")
+population.fit
+for(i in 1:2) print(Box.test(population.fit$residual, lag= 6*i))
+```
+
+最终仍然拟合一阶差分的ARMA（2，1）模型，发现残差为白噪音。
+
+```{r}
+population.fit <- arima(population, order = c(2,1,1), method = "ML")
+population.fit
+for(i in 1:2) print(Box.test(population.fit$residual, lag= 6*i))
+```
+
+**第三小问**
+
+绘制预测5次的时序图。
+
+```{r}
+population.fore <- forecast(population.fit, h=5)
+plot(population.fore)
+```

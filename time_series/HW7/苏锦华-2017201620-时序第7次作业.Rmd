@@ -1,0 +1,119 @@
+---
+title: "时序第7次作业"
+output: html_notebook
+---
+苏锦华 2017201620
+
+# 第一题
+
+```{r}
+table =read.table('../习题数据/习题4.5数据.txt',fill =T)
+population = c()
+for(i in 1:8){
+  for(j in 1:8){
+    if (i != 8 || j <= 4){
+      population = c(population,table[i,j])
+    }
+  }
+}
+population_ts = ts(population,start=1949)
+plot(population_ts,type="o")
+```
+
+```{r}
+library(forecast)
+Holfit <- HoltWinters(population_ts,alpha=0.3,beta=0.6,gamma=F)
+fore <- forecast(Holfit, h=5)
+plot(Holfit)
+plot(fore)
+Holfit
+fore
+```
+准备拟合arima模型，先做一阶差分，查看自相关系数图，发现2阶截尾，而偏自相关系数图1阶截尾，所以模型应该是arima（1,1,2）,白噪音检验均拒绝白噪音的原假设。
+```{r}
+population_ts.diff = diff(population_ts)
+acf(population_ts.diff,lag=24)
+pacf(population_ts.diff)
+for(i in 1:4) print(Box.test(population_ts.diff,lag=6*i))
+```
+使用自动定阶，发现arima（1,1,1）更合适。
+```{r}
+library(zoo)
+library(forecast)
+auto.arima(population_ts)
+```
+拟合模型后将残差序列进行白噪音检验，发现残差序列为白噪音，时序建模结束。
+```{r}
+population_ts.fit <- arima(population_ts, order = c(1,1,1), method = "ML")
+population_ts.fit
+for(i in 1:2) print(Box.test(population_ts.fit$residual, lag= 6*i))
+```
+进行预测后查看2013年的预测结果与3参数指数平滑进行对比，发现三参数指数平滑95%置信区间为【132366.2，139831.5】，但我们arima建模的预测结果为【129673.1，141578.2】，从精度来看三参数的效果更好，但是由于三参数实际上是人为指定，并且由于指定的过大，所以并未考虑过多的长期影响，而arima是用整个序列信息拟合了3个参数，而且保证残差序列是白噪音，所以从科学性上arima更合适。
+
+```{r}
+population_ts.fore <- forecast(population_ts.fit, h=5)
+population_ts.fore
+plot(population_ts.fore)
+```
+
+# 第二题
+
+I use covid-19 data published by wangyi. There are fields like confirm, suspect, heal and etc. Since the confirm number is measured by different methods, I use suspect series to fit my arima model and make some predictions.
+
+```{r}
+library(zoo)
+table =read.csv('covid.csv')
+df = as.data.frame(table)
+df
+```
+
+I use 2020-1-20 ~ 2020-2-13 suspect number as train data, and 2020-2-14~2020-2-28 for testing model property.
+
+```{r}
+suspect_all = ts(df$suspect[1:40],start=c(2020,20),frequency=365)
+suspect = ts(suspect_all[1:25],start=c(2020,20),frequency=365)
+plot(suspect_all)
+plot(suspect)
+```
+
+First, I check the stability of the suspect seires by acf figure and adf test. I suspose it is a series with draft and no trend, and find there exits unit root for raw series. Then I use difference to process it and finally get a stable series. 
+
+```{r}
+library(fUnitRoots)
+acf(suspect)
+for (i in 1:2) print(adfTest(suspect,lag=i,type="c"))
+for(i in 1:2) print(Box.test(suspect,lag=6*i))
+suspect.diff = diff(suspect)
+plot(suspect.diff)
+for (i in 1:2) print(adfTest(suspect.diff,lag=i,type="c"))
+acf(suspect.diff,lag=24)
+pacf(suspect.diff)
+```
+
+I use auto arima function to grid search a best arima model. It finally returns a arima(1,2,1), and both ar1 and ma1 are significant. 
+
+```{r}
+library(zoo)
+library(forecast)
+auto.arima(suspect)
+```
+
+I fit this arima(1,2,1) and then test whether the residual is a white noise series. Results show that it does.
+
+```{r}
+suspect.fit <- arima(suspect, order = c(1,2,1), method = "ML")
+suspect.fit
+for(i in 1:2) print(Box.test(suspect.fit$residual, lag= 6*i))
+```
+
+I use airma to predict the suspect number between 2020-2-14~2020-2-28. It seems to fit the trend well but care little about the random effect. In a word, it can predict in a short time(in this example, it work fairly good in five days), and give a trend estimate in a long time.
+
+```{r}
+suspect.fore <- forecast(suspect.fit, h=15)
+suspect.fore
+plot(suspect.fore)
+par(new=TRUE)
+points(suspect_all,type='o')
+suspect.fore
+```
+

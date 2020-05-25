@@ -1,0 +1,98 @@
+---
+title: "时序第5次作业"
+output: html_notebook
+---
+
+# 课后习题
+
+## 4.1
+
+分别写出一期二期的移动平均公式，展开后发现$X_{T-3}$系数为1/16，$X_{T-1}$系数为5/16。
+
+$$\hat{x}_T(1) = \frac{x_T + x_{T-1} + x_{T-2} + x_{T-3}}{4}$$
+$$\hat{x}_T(2) = \frac{\hat{x}_T(1) + x_T + x_{T-1} + x_{T-2}}{4}$$
+$$\hat{x}_T(2) = \frac{ \frac{5}{4} x_T + \frac{5}{4}x_{T-1} + \frac{5}{4}x_{T-2}+ \frac{1}{4}x_{T-3}}{4} $$
+
+## 4.6
+
+```{r}
+table =read.table('../习题数据/习题4.6数据.txt',fill =T)
+product = c()
+for(i in 1:11){
+  for(j in 1:12){
+    if (i != 11 || j <= 8){
+      product = c(product,table[i,j])
+    }
+  }
+}
+product_ts = ts(product,start=c(1948,1),frequency=4)
+plot(product_ts,type="o")
+```
+
+载入数据后发现该时序呈现十分规整的曲线，分别用一次、二次、三次曲线拟合，三次时已经拟合得非常好，而所有系数均为显著的。故使用趋势拟合法选用三次曲线模型。
+
+### 趋势拟合法
+
+```{r}
+t <- c(1:length(product))
+plot(product)
+abline(lm(product~t),col=2)
+fit <- nls(product~a+b*t+c*t^2,start = list(a=1,b=1,c=1))
+fit_line = ts(predict(fit),start=c(1948,1),frequency=4)
+plot(product_ts, type='p')
+lines(fit_line,col=2,lwd=2)
+fit2 <- nls(product~a+b*t+c*t^2+d*t^3,start = list(a=1,b=1,c=1,d=1))
+fit_line2 = ts(predict(fit2),start=c(1948,1),frequency=4)
+plot(product_ts, type='p')
+lines(fit_line2,col=2,lwd=2)
+summary(fit2)
+```
+
+进一步尝试不同的方法，选择移动平均
+
+### 移动平均法
+
+使用移动平均法进行拟合，由于数据为季度数据，所以期数分别选取4，8,12，发现使用4期效果最好，说明曲线单调且暂未出现明显的大周期。
+
+```{r}
+library(TTR)
+product_ts.ma <- SMA(product_ts, n=4)
+plot(product_ts,type='o')
+lines(product_ts.ma, col=2,lwd=2)
+product_ts.ma2 <- SMA(product_ts, n=8)
+plot(product_ts,type='o')
+lines(product_ts.ma2, col=2,lwd=2)
+product_ts.ma3 <- SMA(product_ts, n=12)
+plot(product_ts,type='o')
+lines(product_ts.ma3, col=2,lwd=2)
+```
+
+
+### 指数平滑法
+
+使用指数平均法拟合，先使用普通的指数平均法，发现未指定alpha时，普通指数平滑平均无法预测出趋势。
+
+```{r}
+library(forecast)
+Holfit.1 <- HoltWinters(product_ts,beta = F,gamma=F)
+fore.1 <- forecast(Holfit.1, h=10)
+plot(fore.1)
+summary(Holfit.1)
+```
+
+发现二参数和三参数的指数平滑模型能够很好地描述趋势发展。
+
+```{r}
+Holfit.2 <- HoltWinters(product_ts,gamma=F)
+fore.2 <- forecast(Holfit.2, h=10)
+plot(fore.2)
+summary(Holfit.2)
+```
+
+```{r}
+Holfit.3 <- HoltWinters(product_ts,gamma=F)
+fore.3 <- forecast(Holfit.3, h=10)
+plot(fore.3)
+summary(Holfit.3)
+```
+

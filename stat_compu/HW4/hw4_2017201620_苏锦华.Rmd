@@ -1,0 +1,40 @@
+---
+title: "统计计算第四次作业"
+output: html_notebook
+---
+苏锦华 2017201620
+
+# 题目要求
+
+在游程题目条件下看统计量$\Sigma_{i=1}^6 \frac{(g_i-nb_i)^2}{nb_i}$是不是服从自由度为5的卡方分布。
+
+# 解答
+
+总体分布的卡方检验的原假设是随机数来自于均匀主体，统计样本的实际频数的差异越大说明观测样本的总体分布与理论分布差异越大。上述统计量的卡方检验结果为0.025，显著拒绝原假设，所以不服自由度为5的卡方分布。相比pdf中，这个统计量的主要区别是a，a起到了调节权重的作用。但总体来说至少这个统计量中nb和g存在差距。
+
+
+```{r}
+N = 1000
+b = c(1/6,5/24,11/120,19/720,29/5040,1/840)
+res <- NULL
+G <- matrix(0,nrow = 1000,ncol=6)
+for (i in 1:1000){
+  data = runif(N)
+  beg_stop = 1
+  for(j in 1:(N-1)){
+    if(data[j+1]<data[j])
+      beg_stop=c(beg_stop,j+1)
+  }
+  beg_stop=c(beg_stop,N+1)
+  end=length(beg_stop)
+  runs <- beg_stop[2:end] -beg_stop[1:(end-1)]
+  G[i,] = c(sum(runs==1),sum(runs==2),sum(runs==3),sum(runs==4),sum(runs==5),sum(runs==6))
+  stat = sum(((G[i,]-N*b)%*%t(c(1,1,1,1,1,1)))*(c(1,1,1,1,1,1)%*%t(G[i,]-N*b))/(N*b))
+  res[i] <- stat>qchisq(0.95,5)
+}
+mean(res)
+```
+打印g值查看，计算比率后发现游程为1的数量算是在nb=166左右，感觉是a在统计量构建中起了比较大的作用。
+```{r}
+G
+```
